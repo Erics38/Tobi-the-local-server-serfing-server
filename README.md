@@ -2,7 +2,16 @@
 
 A self-hosted AI restaurant ordering system powered by **Llama-3-8B-Instruct** with Docker containerization. Tobi is a chill surfer dude AI that helps customers order food with accurate menu knowledge and a friendly personality.
 
-## 🎯 Features
+## 🎯 About This Project
+
+What I wanted to accomplish with this project is to understand how to host an LLM locally and share it with others. I started by downloading an LLM and training data from HuggingFace and hosted it on my computer. I containerized it in Docker for easy setup. I found that it took a long time to get everything started, so I created a custom PowerShell script to start up the program, and this created a quick, repeatable way to start using the app. Another reason for hosting this app locally is that I wanted to avoid having to pay fees to run my project. All of the services I ended up using had free tiers, and this allows me to iterate indefinitely.
+
+**Novelty of it all:**
+I had no idea what to expect with the answers that Tobi would give, and the results were better than what I could have asked for. I found that a lot of hilarious scenarios would start to appear when talking with Tobi. For example: After placing my order, he would start to role-play using the character description I gave him. He would take a sip of my beer or get defensive when I said I didn't want to take surfing lessons with him after dinner.
+
+Overall, this project was an absolute blast and taught me the basics of containerization in Docker, self-hosting, and simple AI implementation.
+
+## ✨ Features
 
 - **🏄‍♂️ Tobi the Surfer AI**: Friendly surfer dude personality using casual language
 - **🧠 Powered by Llama-3-8B**: Smart, accurate responses with no hallucination
