@@ -4,10 +4,17 @@ from llama_cpp import Llama
 import json
 import sqlite3
 import uuid
+import os
 
-MODEL_PATH = "/app/models/phi-2.Q4_K_M.gguf"
+MODEL_PATH = "/app/models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
 
-llm = Llama(model_path=MODEL_PATH)
+# Enable GPU acceleration with n_gpu_layers (set to -1 to use all layers on GPU)
+llm = Llama(
+    model_path=MODEL_PATH,
+    n_ctx=4096,  # Llama-3 supports larger context
+    n_gpu_layers=-1,  # Use GPU for all layers
+    verbose=False
+)
 
 app = FastAPI()
 
@@ -20,14 +27,19 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Presidential birth years for order numbers (first 20 presidents)
-PRESIDENTIAL_YEARS = [
-    1732, 1735, 1743, 1751, 1758, 1767, 1767, 1782, 1773, 1784,
-    1795, 1784, 1800, 1804, 1808, 1809, 1822, 1818, 1831, 1881
-]
+# Simple order number counter
+ORDER_COUNTER_START = 1000
 
-# The Common House Menu Data
-MENU_DATA = {
+# Load menu from JSON file (allows easy menu swapping!)
+MENU_FILE = os.getenv("MENU_FILE", "/app/menu.json")
+try:
+    with open(MENU_FILE, 'r') as f:
+        MENU_DATA = json.load(f)
+    print(f"Loaded menu from {MENU_FILE}")
+except FileNotFoundError:
+    print(f"Menu file not found at {MENU_FILE}, using fallback hardcoded menu")
+    # Fallback to hardcoded menu if file doesn't exist
+    MENU_DATA = {
     "restaurant_name": "The Common House",
     "starters": [
         {"name": "Truffle Fries", "description": "Parmesan, rosemary, truffle oil", "price": 12.00},
@@ -60,7 +72,7 @@ MENU_DATA = {
         {"name": "Margarita", "description": "Tequila, lime, orange liqueur", "price": 11.00},
         {"name": "Whiskey Sour", "description": "Bourbon, lemon, egg white", "price": 12.00}
     ]
-}
+    }
 
 # Initialize SQLite database
 def init_db():
@@ -89,11 +101,7 @@ def get_next_order_number():
     cursor.execute('SELECT COUNT(*) FROM orders')
     count = cursor.fetchone()[0]
     conn.close()
-    
-    if count < len(PRESIDENTIAL_YEARS):
-        return PRESIDENTIAL_YEARS[count]
-    else:
-        return PRESIDENTIAL_YEARS[count % len(PRESIDENTIAL_YEARS)]
+    return ORDER_COUNTER_START + count
 
 @app.get("/")
 def root():
@@ -112,22 +120,33 @@ async def chat(request: Request):
         
         if not prompt:
             return {"error": "No prompt or message provided"}
-        
-        # Check for magic password
-        has_magic_password = "i'm on yelp" in prompt.lower()
-        magic_note = " VIP Customer!" if has_magic_password else ""
-        
-        # Simple prompt to avoid context issues
-       	simple_prompt = f"You are Tobi, a chill surfer who works at The Common House restaurant. Respond to this customer message in one short response only. Use casual surfer language.{magic_note}\n\nCustomer: {prompt}\nTobi:"
 
-        output = llm(simple_prompt, max_tokens=50, temperature=0.5)
+        # Build full menu context with descriptions - let the model infer what the customer wants
+        menu_text = ""
+        for category in ["starters", "mains", "desserts", "drinks"]:
+            if category in MENU_DATA and isinstance(MENU_DATA[category], list):
+                menu_text += f"\n{category.title()}: "
+                items_list = [f"{item['name']} ({item['description']}, ${item['price']})" for item in MENU_DATA[category]]
+                menu_text += "; ".join(items_list)
+
+        system_context = f"Full menu:{menu_text}"
+
+        # Llama-3 instruction format with system message
+        simple_prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are Tobi, a chill surfer who works at {MENU_DATA['restaurant_name']} restaurant. {system_context} Answer questions about our menu in 1-2 short sentences. Use casual surfer language. Only mention items actually on our menu with accurate descriptions. Everything is available.<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+"""
+
+        output = llm(simple_prompt, max_tokens=70, temperature=0.5, stop=["<|eot_id|>", "<|end_of_text|>"])
         ai_response = output["choices"][0]["text"].strip()
         
         return {
             "response": ai_response,
             "session_id": session_id,
-            "has_magic_password": has_magic_password,
-            "restaurant": "The Common House"
+            "restaurant": MENU_DATA.get("restaurant_name", "Restaurant")
         }
         
     except json.JSONDecodeError:

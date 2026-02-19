@@ -1,11 +1,40 @@
-﻿# Model files (too large for GitHub)
+# Model files (too large for GitHub - 4.7GB+)
 models/
 *.gguf
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
 .env
+.venv
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Docker
 .docker/
+*.log
+
+# Database
+*.db
+*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

@@ -13,8 +13,9 @@ WORKDIR /app
 # Install Python dependencies first
 RUN pip install fastapi uvicorn llama-cpp-python
 
-# Copy server file
+# Copy server file and menu
 COPY server.py /app/
+COPY menu.json /app/
 
 # Create models directory and copy the specific model file
 RUN mkdir -p /app/models
