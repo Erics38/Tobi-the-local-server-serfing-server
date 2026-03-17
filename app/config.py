@@ -20,9 +20,6 @@ class Settings(BaseSettings):
     # Restaurant Information
     restaurant_name: str = "The Common House"
 
-    # Database
-    database_url: str = "sqlite:///./data/orders.db"
-
     # AI Model (Optional - for future llama.cpp integration)
     llama_server_url: Optional[str] = None
     use_local_ai: bool = False
@@ -36,10 +33,6 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_file: str = "logs/app.log"
-
-    # Feature Flags
-    enable_magic_password: bool = True
-    magic_password: str = "i'm on yelp"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore")
 
