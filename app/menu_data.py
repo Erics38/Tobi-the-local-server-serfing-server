@@ -2,8 +2,10 @@
 The Common House menu data.
 """
 
+from typing import Any
+
 # Presidential birth years for order numbers (first 20 presidents)
-PRESIDENTIAL_YEARS = [
+PRESIDENTIAL_YEARS: list[int] = [
     1732,
     1735,
     1743,
@@ -27,7 +29,7 @@ PRESIDENTIAL_YEARS = [
 ]
 
 # The Common House Menu Data
-MENU_DATA = {
+MENU_DATA: dict[str, Any] = {
     "restaurant_name": "The Common House",
     "starters": [
         {"name": "Truffle Fries", "description": "Parmesan, rosemary, truffle oil", "price": 12.00},
