@@ -5,6 +5,7 @@ Tobi AI - Menu-aware chatbot with surfer personality.
 import random
 import logging
 import httpx
+from typing import Any
 
 from .menu_data import MENU_DATA
 from .config import settings
@@ -35,7 +36,7 @@ TOBI_RESPONSES = {
 }
 
 
-def find_menu_item(query: str) -> list[tuple[str, dict]]:
+def find_menu_item(query: str) -> list[tuple[str, dict[str, Any]]]:
     """
     Search for menu items matching the query.
 
