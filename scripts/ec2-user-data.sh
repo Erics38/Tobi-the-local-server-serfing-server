@@ -16,7 +16,7 @@ apt-get upgrade -y
 
 # Install Docker and Docker Compose
 echo "[2/6] Installing Docker..."
-apt-get install -y docker.io docker-compose git curl
+apt-get install -y docker.io docker-compose-v2 git curl wget
 
 # Add ubuntu user to docker group
 usermod -aG docker ubuntu
@@ -25,9 +25,9 @@ usermod -aG docker ubuntu
 systemctl enable docker
 systemctl start docker
 
-# Install Python 3.11 for testing
-echo "[3/6] Installing Python 3.11..."
-apt-get install -y python3.11 python3.11-venv python3-pip
+# Install Python for testing (Ubuntu 24.04 has Python 3.12)
+echo "[3/6] Installing Python..."
+apt-get install -y python3 python3-venv python3-pip
 
 # Clone repository
 echo "[4/6] Cloning restaurant-ai-chatbot..."
@@ -36,9 +36,13 @@ git clone https://github.com/Erics38/restaurant-ai-chatbot.git
 chown -R ubuntu:ubuntu restaurant-ai-chatbot
 cd restaurant-ai-chatbot
 
+# Fix permissions for logs
+mkdir -p logs data models
+chown -R ubuntu:ubuntu logs data models
+
 # Start Docker Compose (template mode - no AI model needed)
 echo "[5/6] Starting application with Docker..."
-docker-compose up -d app
+docker compose up -d app
 
 # Wait for app to be healthy
 echo "[6/6] Waiting for application to start..."
@@ -58,8 +62,7 @@ if curl -f http://localhost:8000/health; then
     echo ""
     echo "To run tests (SSH into instance):"
     echo "  cd /home/ubuntu/restaurant-ai-chatbot"
-    echo "  sudo su - ubuntu"
-    echo "  python3.11 -m venv venv"
+    echo "  python3 -m venv venv"
     echo "  source venv/bin/activate"
     echo "  pip install -r requirements.txt"
     echo "  pip install pytest pytest-asyncio black flake8 mypy"
