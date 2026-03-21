@@ -32,8 +32,8 @@ services:
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       # CORS (adjust for production)
       - ALLOWED_ORIGINS=*
-      # AI Settings (enabled by default)
-      - USE_LOCAL_AI=${USE_LOCAL_AI:-true}
+      # AI Settings (template mode by default - set USE_LOCAL_AI=true to enable AI)
+      - USE_LOCAL_AI=${USE_LOCAL_AI:-false}
       - LLAMA_SERVER_URL=${LLAMA_SERVER_URL:-http://llama-server:8080}
     restart: unless-stopped
     healthcheck:
