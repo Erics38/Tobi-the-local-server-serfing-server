@@ -1,0 +1,79 @@
+name: Contributor Verification
+
+# This workflow verifies that contributors can successfully run CI
+# It tests the setup as if a fresh contributor just forked the repo
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+
+jobs:
+  verify-contributor-setup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Verify requirements.txt exists
+      run: |
+        if [ ! -f requirements.txt ]; then
+          echo "ERROR: requirements.txt not found"
+          exit 1
+        fi
+        echo "✓ requirements.txt found"
+
+    - name: Verify test directory exists
+      run: |
+        if [ ! -d tests ]; then
+          echo "ERROR: tests/ directory not found"
+          exit 1
+        fi
+        echo "✓ tests/ directory found"
+
+    - name: Install dependencies (as contributor would)
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov black flake8 mypy
+
+    - name: Run verification script
+      run: |
+        chmod +x scripts/verify-ci-locally.sh
+        ./scripts/verify-ci-locally.sh
+
+    - name: Verify documentation exists
+      run: |
+        if [ ! -f .github/CONTRIBUTING.md ]; then
+          echo "ERROR: CONTRIBUTING.md not found"
+          exit 1
+        fi
+        if [ ! -f CICD_SETUP.md ]; then
+          echo "ERROR: CICD_SETUP.md not found"
+          exit 1
+        fi
+        echo "✓ All contributor documentation found"
+
+    - name: Summary
+      run: |
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "✅ Contributor setup verification complete!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "This repository is ready for contributors to:"
+        echo "  1. Fork the repository"
+        echo "  2. Run 'pip install -r requirements.txt'"
+        echo "  3. Run './scripts/verify-ci-locally.sh'"
+        echo "  4. Push changes and have CI run automatically"
+        echo ""
+        echo "Documentation available:"
+        echo "  - .github/CONTRIBUTING.md"
+        echo "  - CICD_SETUP.md"
+        echo "  - README.md (Contributing section)"
