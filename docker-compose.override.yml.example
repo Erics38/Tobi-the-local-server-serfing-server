@@ -25,7 +25,7 @@ services:
       - "-m"
       - "llama_cpp.server"
       - "--model"
-      - "/models/phi-2.Q4_K_M.gguf"
+      - "/models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf"
       - "--host"
       - "0.0.0.0"
       - "--port"

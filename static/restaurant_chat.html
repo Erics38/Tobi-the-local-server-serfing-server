@@ -246,7 +246,10 @@
 <body>
     <div class="header">
         <h1>🍽️ The Common House</h1>
-        <a href="#" class="menu-link" onclick="showMenu()">View Menu</a>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="menu-link" onclick="clearConversation()" style="background: #e53e3e; border: none; cursor: pointer;">Clear Chat</button>
+            <a href="#" class="menu-link" onclick="showMenu()">View Menu</a>
+        </div>
     </div>
 
     <div class="chat-container">
@@ -289,11 +292,64 @@
 
     <script>
         const API_URL = window.location.origin;
-        let sessionId = generateSessionId();
+        let sessionId = null;
         let menuData = null;
 
-        function generateSessionId() {
-            return 'session_' + Math.random().toString(36).substr(2, 9);
+        // Session management with localStorage
+        function initializeSession() {
+            // Try to get existing session from localStorage
+            sessionId = localStorage.getItem('restaurantSessionId');
+
+            if (!sessionId) {
+                // Generate new UUID v4
+                sessionId = crypto.randomUUID();
+                localStorage.setItem('restaurantSessionId', sessionId);
+                console.log('Created new session:', sessionId);
+            } else {
+                console.log('Loaded existing session:', sessionId);
+            }
+
+            return sessionId;
+        }
+
+        async function loadConversationHistory() {
+            try {
+                const response = await fetch(`${API_URL}/chat/history/${sessionId}`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    console.log('Loaded', messages.length, 'historical messages');
+
+                    // Clear the initial greeting message
+                    const messagesContainer = document.getElementById('messages');
+                    messagesContainer.innerHTML = '';
+
+                    if (messages.length === 0) {
+                        // If no history, show initial greeting
+                        addMessage("Hey dude! I'm Tobi, your chill restaurant assistant. I can help you check out our menu and get you some rad food. What's up?", false);
+                    } else {
+                        // Load historical messages
+                        messages.forEach(msg => {
+                            addMessage(msg.content, msg.role === 'user');
+                        });
+                    }
+
+                    scrollToBottom();
+                }
+            } catch (error) {
+                console.log('No conversation history found or error loading:', error);
+            }
+        }
+
+        function scrollToBottom() {
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function clearConversation() {
+            if (confirm('Clear conversation history and start fresh?')) {
+                localStorage.removeItem('restaurantSessionId');
+                location.reload();
+            }
         }
 
         async function loadMenu() {
@@ -428,8 +484,12 @@
             }
         }
 
-        // Load menu on page load
-        window.addEventListener('load', loadMenu);
+        // Load menu and session on page load
+        window.addEventListener('load', async function() {
+            initializeSession();
+            await loadMenu();
+            await loadConversationHistory();
+        });
 
         // Handle enter key
         document.getElementById('messageInput').addEventListener('keypress', function(e) {

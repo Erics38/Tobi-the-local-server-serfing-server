@@ -37,7 +37,7 @@ Instead of paying for an AMI, you can recreate your EC2 setup in ~10 minutes usi
 4. **Wait ~10 minutes:**
    - System updates: ~2 min
    - Docker installation: ~1 min
-   - Model download (1.7GB): ~5 min
+   - Model download (4.92GB): ~5 min
    - Docker build: ~2 min
    - Services start: ~1 min
 
@@ -88,7 +88,7 @@ sudo -u ubuntu ./ec2-setup-with-ai.sh
 - Docker + Docker Compose
 - Python 3.12 + pip
 - All Python dependencies
-- Phi-2 AI model (downloaded from HuggingFace)
+- Llama-3-8B AI model (downloaded from HuggingFace)
 - Custom llama-server Docker image
 - docker-compose.override.yml configuration
 - All application code

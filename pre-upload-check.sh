@@ -79,7 +79,7 @@ if [ $ERRORS -eq 0 ]; then
     echo ""
     echo "Next steps:"
     echo "  git add ."
-    echo "  git commit -m \"Initial commit: Restaurant AI with Phi-2\""
+    echo "  git commit -m \"Initial commit: Restaurant AI with Llama-3-8B\""
     echo "  git push origin main"
     exit 0
 else

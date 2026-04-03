@@ -101,7 +101,7 @@ You have two options to save your work:
    ```
 
 3. **Document the model download:**
-   - Already in docs (phi-2.Q4_K_M.gguf from HuggingFace)
+   - Already in docs (Meta-Llama-3-8B-Instruct.Q4_K_M.gguf from HuggingFace)
 
 4. **Terminate instance:**
    ```
@@ -128,7 +128,7 @@ You have two options to save your work:
 ## What You'll Lose if You Just Terminate
 
 - ✗ Installed Docker, Python, dependencies
-- ✗ Downloaded Phi-2 model (1.7GB)
+- ✗ Downloaded Llama-3-8B model (4.92GB)
 - ✗ Built Docker images (local-llama-server)
 - ✗ docker-compose.override.yml configuration
 - ✓ All code (safe in Git)
@@ -143,7 +143,7 @@ You have two options to save your work:
 aws ec2 create-image \
   --instance-id i-YOUR-INSTANCE-ID \
   --name "restaurant-ai-working-setup" \
-  --description "Restaurant AI with Docker, Phi-2 model, ready to run"
+  --description "Restaurant AI with Docker, Llama-3-8B model, ready to run"
 ```
 
 ### Stop Instance (via AWS CLI):
@@ -166,12 +166,12 @@ aws ec2 terminate-instances --instance-ids i-YOUR-INSTANCE-ID
 - What's Installed:
   - Docker + Docker Compose v2
   - Python 3.12 + venv
-  - Phi-2 AI model (1.7GB)
+  - Llama-3-8B AI model (4.92GB)
   - Custom llama-server Docker image
   - All dependencies from requirements.txt
 
 You can recreate this with the user data script, but you'll need to:
-1. Re-download the Phi-2 model (~5 min)
+1. Re-download the Llama-3-8B model (~5 min)
 2. Re-build the llama-server Docker image (~3 min)
 3. Create docker-compose.override.yml
 

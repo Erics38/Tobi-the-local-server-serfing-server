@@ -15,9 +15,8 @@ python-dotenv==1.0.1
 # ===== HTTP Client (for llama-server integration) =====
 httpx==0.28.1
 
-# ===== Database (Optional - if switching to PostgreSQL) =====
-# sqlalchemy==2.0.25
-# psycopg2-binary==2.9.9
+# ===== Database =====
+sqlalchemy==2.0.25
 
 # ===== AI Model (Optional - for real llama.cpp integration) =====
 # llama-cpp-python==0.3.16  # Requires C++ compiler on Windows

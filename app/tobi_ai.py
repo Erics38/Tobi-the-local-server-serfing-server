@@ -205,27 +205,103 @@ STARTERS:
 
     menu_context += "\n\nRespond to the customer in 1-2 short sentences. Keep it casual and fun!"
 
-    # Call llama-server API
+    # Call llama-server API using chat mode for better instruction following
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{settings.llama_server_url}/completion",
+                f"{settings.llama_server_url}/v1/chat/completions",
                 json={
-                    "prompt": f"{menu_context}\n\nCustomer: {prompt}\nTobi:",
+                    "messages": [
+                        {"role": "system", "content": menu_context},
+                        {"role": "user", "content": prompt}
+                    ],
                     "max_tokens": 100,
                     "temperature": 0.7,
-                    "stop": ["\n", "Customer:", "Tobi:"],
+                    "stop": ["\n\n", "Customer:", "User:"],
                 },
             )
             response.raise_for_status()
             result = response.json()
-            ai_text = result.get("content", "").strip()
+            ai_text = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
             if not ai_text:
                 logger.warning("AI returned empty response, using template fallback")
                 return get_tobi_response(prompt)
 
             logger.info(f"AI response: {ai_text}")
+            return ai_text
+
+    except Exception as e:
+        logger.error(f"Error calling llama-server: {e}")
+        logger.info("Falling back to template responses")
+        return get_tobi_response(prompt)
+
+
+async def get_ai_response_with_context(
+    prompt: str,
+    session_id: str,
+    db
+) -> str:
+    """
+    Get AI response with conversation history context.
+
+    This function fetches the last 10 messages from the database for the given session
+    and includes them in the context when calling the AI. This enables the AI to have
+    memory of the conversation and provide contextually aware responses.
+
+    Args:
+        prompt: User's current message
+        session_id: Session ID for fetching conversation history
+        db: SQLAlchemy database session
+
+    Returns:
+        AI-generated response string
+    """
+    from app.prompts import get_system_prompt
+    from app.models import DBMessage
+
+    if not settings.llama_server_url:
+        logger.warning("llama_server_url not configured, falling back to templates")
+        return get_tobi_response(prompt)
+
+    # Fetch last 10 messages for context (excluding current message)
+    history = db.query(DBMessage).filter(
+        DBMessage.session_id == session_id
+    ).order_by(DBMessage.timestamp.desc()).limit(10).all()
+
+    # Build messages array (reversed because we fetched desc)
+    messages = [
+        {"role": "system", "content": get_system_prompt(include_menu=True)}
+    ]
+
+    # Add conversation history
+    for msg in reversed(history):
+        messages.append({"role": msg.role, "content": msg.content})
+
+    # Add current user message
+    messages.append({"role": "user", "content": prompt})
+
+    # Call llama-server API with chat completions
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{settings.llama_server_url}/v1/chat/completions",
+                json={
+                    "messages": messages,
+                    "max_tokens": 150,  # Increased from 100 for fuller responses
+                    "temperature": 0.6,  # Reduced from 0.7 for more consistency
+                    "stop": ["\n\n", "Customer:", "User:"],
+                },
+            )
+            response.raise_for_status()
+            result = response.json()
+            ai_text = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+            if not ai_text:
+                logger.warning("AI returned empty response, using template fallback")
+                return get_tobi_response(prompt)
+
+            logger.info(f"AI response with context ({len(history)} msgs history): {ai_text}")
             return ai_text
 
     except Exception as e:
