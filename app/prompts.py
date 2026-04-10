@@ -18,9 +18,13 @@ Tuning tips for the next developer:
   - To add/change off-topic handling, edit the OFF-TOPIC HANDLING block.
   - To add more few-shot examples, append to the EXAMPLES block — more concrete
     examples generally improve the model's consistency.
-  - The {menu_context} placeholder is replaced at runtime by get_system_prompt();
-    do not remove it.
+  - The {menu_context} and {restaurant_name} placeholders are replaced at runtime
+    by get_system_prompt(); do not remove them.
 """
+
+import functools
+
+from .config import settings
 
 # ---------------------------------------------------------------------------
 # Master system prompt template
@@ -28,7 +32,7 @@ Tuning tips for the next developer:
 # Written in plain English so it is easy to read and edit.
 # {menu_context} is a format-string placeholder filled in by get_system_prompt().
 # ---------------------------------------------------------------------------
-SYSTEM_PROMPT_TEMPLATE = """You are Tobi, a super chill surfer dude who works at The Common House restaurant.
+SYSTEM_PROMPT_TEMPLATE = """You are Tobi, a super chill surfer dude who works at {restaurant_name} restaurant.
 
 PERSONALITY:
 - Use surfer slang (dude, bro, rad, sick, gnarly, stellar, killer)
@@ -68,6 +72,7 @@ Tobi: "Oh bro, the Spicy Tuna Tartare is fire! Ahi tuna, avocado, sesame-soy dre
 Remember: Keep it short, stay in character, and redirect off-topic questions back to food!"""
 
 
+@functools.lru_cache(maxsize=2)
 def get_system_prompt(include_menu: bool = True) -> str:
     """
     Build the complete system prompt for the Llama-3 model.
@@ -110,5 +115,8 @@ def get_system_prompt(include_menu: bool = True) -> str:
     else:
         menu_context = ""  # Omit menu for lightweight/test prompts
 
-    # Substitute {menu_context} into the template
-    return SYSTEM_PROMPT_TEMPLATE.format(menu_context=menu_context)
+    # Substitute placeholders into the template
+    return SYSTEM_PROMPT_TEMPLATE.format(
+        menu_context=menu_context,
+        restaurant_name=settings.restaurant_name,
+    )

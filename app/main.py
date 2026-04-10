@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session as ORMSession
 
 from .config import settings
 from .models import ChatRequest, ChatResponse, HealthResponse, DBSession, DBMessage
-from .tobi_ai import get_ai_response_with_context
+from .tobi_ai import get_response_with_context
 from .menu_data import MENU_DATA
 from .database import get_db, init_db
 
@@ -241,11 +241,12 @@ async def chat(request: ChatRequest, db: ORMSession = Depends(get_db)):
         db.add(user_message)
         db.commit()
 
-        # Step 4: Get Tobi's response (AI with history, or template fallback)
-        ai_response = await get_ai_response_with_context(
+        # Step 4: Get Tobi's response — dispatcher picks backend based on request
+        ai_response = await get_response_with_context(
             request.message,
             session.id,
             db,
+            ai_backend=request.ai_backend,
         )
 
         # Step 5: Persist Tobi's reply

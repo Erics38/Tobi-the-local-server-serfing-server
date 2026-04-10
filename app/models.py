@@ -63,6 +63,8 @@ class ChatRequest(BaseModel):
       session_id — Optional UUID that ties messages together into a conversation.
                    If omitted, the backend generates a new UUID and returns it
                    in the response so the client can store it for future turns.
+      ai_backend — Optional per-request backend override: "template" | "llama" | "bedrock".
+                   If omitted, the server-wide AI_BACKEND env var is used.
     """
     message: str = Field(
         ...,
@@ -73,6 +75,10 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = Field(
         None,
         description="UUID session identifier; omit to start a new conversation"
+    )
+    ai_backend: Optional[str] = Field(
+        None,
+        description="Per-request AI backend override: 'template' | 'llama' | 'bedrock'"
     )
 
 

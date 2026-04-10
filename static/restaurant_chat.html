@@ -190,6 +190,21 @@
         .send-button:hover:not(:disabled) { background: #3182ce; }
         .send-button:disabled             { background: #a0aec0; cursor: not-allowed; }
 
+        /* AI backend selector */
+        .backend-select {
+            padding: 0.75rem 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            color: #4a5568;
+            background: white;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+            flex-shrink: 0;
+        }
+        .backend-select:focus { border-color: #4299e1; }
+
         /* =====================================================================
            "Tobes is thinking..." loading indicator
            Hidden by default; shown during API call via .show class toggle.
@@ -308,6 +323,11 @@
          =================================================================== -->
     <div class="input-container">
         <form class="input-form" onsubmit="sendMessage(event)">
+            <select class="backend-select" id="backendSelect" title="AI backend">
+                <option value="template">Template</option>
+                <option value="llama">Llama</option>
+                <option value="bedrock">Bedrock</option>
+            </select>
             <input
                 type="text"
                 class="message-input"
@@ -583,12 +603,14 @@
             showLoading();
 
             try {
+                const backend = document.getElementById('backendSelect').value;
                 const response = await fetch(`${API_URL}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message:    message,
-                        session_id: sessionId   // Links this message to the conversation
+                        session_id: sessionId,
+                        ai_backend: backend,
                     })
                 });
 

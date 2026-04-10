@@ -53,6 +53,32 @@ class Settings(BaseSettings):
     use_local_ai: bool = False
 
     # ------------------------------------------------------------------
+    # AI backend dispatcher (replaces USE_LOCAL_AI boolean)
+    # ------------------------------------------------------------------
+    # Allowed values: "template" | "llama" | "bedrock"
+    # Default "template" preserves current behaviour — no behaviour change
+    # until AI_BACKEND env var is explicitly set.
+    ai_backend: str = "template"
+
+    # ------------------------------------------------------------------
+    # AWS Bedrock settings (only used when ai_backend == "bedrock")
+    # ------------------------------------------------------------------
+    aws_region: str = "us-east-1"
+    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    # Cross-region inference profile. Use "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    # for global resilience. See BEDROCK_INTEGRATION.md for the IAM policy.
+    #
+    # CREDENTIALS: do NOT add aws_access_key_id or aws_secret_access_key here.
+    # boto3 follows the standard AWS credential chain:
+    #   1. AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars  (local dev)
+    #   2. ~/.aws/credentials                                   (local dev)
+    #   3. Bedrock API key                                      (local dev, 12h expiry)
+    #   4. EC2 IAM instance role via IMDSv2                     (production — preferred)
+    # On EC2: attach an IAM role to the instance; zero credentials in any file.
+    # See BEDROCK_INTEGRATION.md for full setup instructions.
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
     # Security
     # ------------------------------------------------------------------
     # Used to sign any future JWT tokens. MUST be changed in production.

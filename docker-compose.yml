@@ -33,46 +33,15 @@ services:
       dockerfile: Dockerfile
     container_name: restaurant-ai
     ports:
-      - "8000:8000"   # Expose to host; visit http://localhost:8000
+      - "8000:8000"
+    env_file:
+      - .env
     volumes:
-      - ./data:/app/data              # SQLite DB — survives container restarts
-      - ./logs:/app/logs              # App logs — useful for debugging in prod
-      - ./models:/app/models:ro       # GGUF model files — read-only for safety
-      - ./app:/app/app                # Hot reload: remove this line in production
-    environment:
-      - ENVIRONMENT=production
-      - HOST=0.0.0.0
-      - PORT=8000
-      - LOG_LEVEL=INFO
-
-      # DATABASE_URL is read by the app but the actual path is hardcoded in
-      # database.py (sqlite:///./data/conversations.db). This env var is kept
-      # here for documentation / potential future migration to Postgres.
-      - DATABASE_URL=sqlite:///./data/orders.db
-
-      - RESTAURANT_NAME=The Common House
-
-      # SECRET_KEY is used to sign future JWT tokens. Override with a strong
-      # random value in production: openssl rand -hex 32
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
-
-      # ALLOWED_ORIGINS controls CORS. "*" allows any origin.
-      # In production, restrict to your domain: https://myrestaurant.com
-      - ALLOWED_ORIGINS=*
-
-      # AI settings — both can be overridden via shell env vars before `docker compose up`
-      # USE_LOCAL_AI=false → skip Llama-3 and use fast keyword templates instead
-      - USE_LOCAL_AI=${USE_LOCAL_AI:-true}
-      # Internal Docker network URL for the llama-server container
-      - LLAMA_SERVER_URL=${LLAMA_SERVER_URL:-http://llama-server:8080}
-
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./models:/app/models:ro
+      - ./app:/app/app
     restart: unless-stopped
-
-    # Don't start the app until llama-server passes its health check.
-    # This prevents 503 errors during the model loading window on first boot.
-    depends_on:
-      llama-server:
-        condition: service_healthy
 
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
@@ -115,10 +84,9 @@ services:
       --model /models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
       --host 0.0.0.0
       --port 8080
-      --n_ctx 4096          # Context window: 4096 tokens (system prompt + history + reply)
-      --chat_format llama-3  # Llama-3 uses a specific chat template format
-      --use_mmap false       # Disable memory-mapping; loads entire model into RAM upfront
-                             # (slower to start but more predictable latency per request)
+      --n_ctx 4096
+      --chat_format llama-3
+      --use_mmap false
     networks:
       - restaurant-network
 

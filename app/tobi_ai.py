@@ -25,12 +25,24 @@ that form a layered fallback chain:
         • Any other unexpected error from the AI server
       Guarantees Tobi always has something useful to say.
 
-Flow in production (AI enabled):
+  Mode 4 — Bedrock AI with context  (get_bedrock_response_with_context)  ← FUTURE
+      Calls AWS Bedrock via boto3 Converse API. Same DB history logic as Mode 1.
+      Does not require a sidecar container — boto3 calls AWS directly.
+      Falls back to templates on any AWS/network error.
+      Enabled when settings.ai_backend == "bedrock".
+
+Flow in production (llama AI enabled):
   POST /chat → get_ai_response_with_context → llama-server
                                             ↘ (on error) get_tobi_response
 
 Flow in template mode (USE_LOCAL_AI=false or llama_server_url unset):
   POST /chat → get_tobi_response_async → get_tobi_response
+
+Future flow with AI_BACKEND dispatcher:
+  POST /chat → get_response_with_context()   ← dispatcher (to be added)
+                 ├─ ai_backend="bedrock"  → get_bedrock_response_with_context()
+                 ├─ ai_backend="llama"    → get_ai_response_with_context()
+                 └─ ai_backend="template" → get_tobi_response()
 """
 
 import random
@@ -42,6 +54,33 @@ from .menu_data import MENU_DATA
 from .config import settings
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# AWS Bedrock client — created once at module load, reused across requests.
+# boto3 clients are thread-safe; creating one per-request causes race conditions.
+# ---------------------------------------------------------------------------
+try:
+    import boto3
+    import botocore.exceptions
+    from botocore.config import Config as BotocoreConfig
+    _bedrock_client = boto3.client(
+        "bedrock-runtime",
+        region_name=settings.aws_region,
+        config=BotocoreConfig(
+            retries={"mode": "adaptive", "max_attempts": 5}
+        ),
+    )
+    _bedrock_available = True
+    logger.info(f"Bedrock client initialised (region={settings.aws_region})")
+except ImportError:
+    _bedrock_client = None
+    _bedrock_available = False
+    logger.warning("boto3 not installed — Bedrock backend unavailable")
+except Exception as e:
+    _bedrock_client = None
+    _bedrock_available = False
+    logger.warning(f"Failed to create Bedrock client: {type(e).__name__}: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +362,23 @@ STARTERS:
 # ---------------------------------------------------------------------------
 # Mode 1 — Primary AI call with conversation history (context-aware)
 # ---------------------------------------------------------------------------
+#
+# WHEN ADDING AI_BACKEND SUPPORT — add a dispatcher above this function:
+#
+#   async def get_response_with_context(prompt: str, session_id: str, db) -> str:
+#       """Route to the correct backend based on settings.ai_backend."""
+#       if settings.ai_backend == "bedrock":
+#           return await get_bedrock_response_with_context(prompt, session_id, db)
+#       elif settings.ai_backend == "llama" or settings.llama_server_url:
+#           return await get_ai_response_with_context(prompt, session_id, db)
+#       else:
+#           return get_tobi_response(prompt)
+#
+# Then update main.py — ONE line change only:
+#   from .tobi_ai import get_ai_response_with_context   (current)
+#   from .tobi_ai import get_response_with_context      (after)
+# The call site in the /chat endpoint stays identical.
+# ---------------------------------------------------------------------------
 
 async def get_ai_response_with_context(prompt: str, session_id: str, db) -> str:
     """
@@ -416,6 +472,137 @@ async def get_ai_response_with_context(prompt: str, session_id: str, db) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Mode 4 — AWS Bedrock AI with conversation history
+# ---------------------------------------------------------------------------
+
+async def get_bedrock_response_with_context(prompt: str, session_id: str, db) -> str:
+    """
+    Send a multi-turn request to AWS Bedrock using the Converse API.
+
+    Uses the same conversation-history logic as get_ai_response_with_context but
+    routes to Bedrock instead of a local llama-server.  boto3 is synchronous so
+    the blocking call is wrapped in run_in_executor to avoid stalling FastAPI's
+    event loop under concurrent load.
+
+    Falls back to template responses on any AWS / network error.
+    """
+    import asyncio
+    from app.prompts import get_system_prompt
+    from app.models import DBMessage
+
+    if not _bedrock_available:
+        logger.error("boto3 not installed or Bedrock client failed to init — falling back to templates")
+        return get_tobi_response(prompt)
+
+    history = (
+        db.query(DBMessage)
+        .filter(DBMessage.session_id == session_id)
+        .order_by(DBMessage.timestamp.desc())
+        .limit(10)
+        .all()
+    )
+
+    # Converse API requires content as a list of blocks, not a plain string.
+    raw_messages = [
+        {"role": msg.role, "content": [{"text": msg.content}]}
+        for msg in reversed(history)
+    ]
+    # Bedrock raises ValidationException if the first message is not from "user"
+    while raw_messages and raw_messages[0]["role"] != "user":
+        raw_messages.pop(0)
+    raw_messages.append({"role": "user", "content": [{"text": prompt}]})
+
+    # System prompt is a top-level parameter in Converse — NOT inside messages[]
+    system = [{"text": get_system_prompt(include_menu=True)}]
+
+    def _sync_call():
+        return _bedrock_client.converse(
+            modelId=settings.bedrock_model_id,
+            system=system,
+            messages=raw_messages,
+            inferenceConfig={
+                "maxTokens": 150,
+                "temperature": 0.6,
+                # Do NOT add topP alongside temperature for Claude Sonnet 4.5+;
+                # using both raises a ValidationException.
+                # Bedrock rejects blank or whitespace-only stop sequences,
+                # so "\n\n" is excluded — Claude naturally produces short replies.
+                "stopSequences": ["Customer:", "User:"],
+            },
+        )
+
+    try:
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, _sync_call)
+
+        ai_text = response["output"]["message"]["content"][0]["text"].strip()
+
+        if not ai_text:
+            logger.warning("Bedrock returned empty response, using template fallback")
+            return get_tobi_response(prompt)
+
+        stop_reason = response.get("stopReason", "unknown")
+        usage = response.get("usage", {})
+        logger.info(
+            f"Bedrock response ({len(history)} msgs history, "
+            f"stop={stop_reason}, tokens={usage.get('totalTokens', '?')}): {ai_text[:80]}"
+        )
+        return ai_text
+
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        logger.error(f"Bedrock ClientError [{error_code}]: {e}", exc_info=True)
+        logger.info("Falling back to template responses")
+        return get_tobi_response(prompt)
+    except botocore.exceptions.BotoCoreError as e:
+        logger.error(f"Bedrock BotoCoreError: {type(e).__name__}: {e}", exc_info=True)
+        logger.info("Falling back to template responses")
+        return get_tobi_response(prompt)
+    except Exception as e:
+        logger.error(f"Bedrock unexpected error: {type(e).__name__}: {e}", exc_info=True)
+        logger.info("Falling back to template responses")
+        return get_tobi_response(prompt)
+
+
+# ---------------------------------------------------------------------------
+# Dispatcher — routes each request to the correct backend
+# ---------------------------------------------------------------------------
+
+async def get_response_with_context(
+    prompt: str,
+    session_id: str,
+    db,
+    ai_backend: str | None = None,
+) -> str:
+    """
+    Route a chat request to the correct AI backend.
+
+    Priority:
+      1. `ai_backend` argument (per-request override from the frontend dropdown)
+      2. `settings.ai_backend` env-var (server-wide default)
+      3. Legacy `settings.llama_server_url` present → llama
+      4. Fallback → template
+
+    Allowed values for ai_backend: "template" | "llama" | "bedrock"
+    """
+    backend = (ai_backend or settings.ai_backend or "template").lower()
+
+    if backend == "bedrock":
+        logger.info("Dispatcher: routing to Bedrock")
+        return await get_bedrock_response_with_context(prompt, session_id, db)
+
+    if backend == "llama":
+        logger.info("Dispatcher: routing to Llama")
+        return await get_ai_response_with_context(prompt, session_id, db)
+
+    if backend != "template":
+        logger.warning(f"Dispatcher: unknown backend '{backend}', falling back to template")
+
+    logger.info("Dispatcher: routing to template fallback")
+    return get_tobi_response(prompt)
+
+
+# ---------------------------------------------------------------------------
 # Public async entry point (used when USE_LOCAL_AI=true without DB context)
 # ---------------------------------------------------------------------------
 
@@ -439,3 +626,10 @@ async def get_tobi_response_async(prompt: str) -> str:
     else:
         # Route to templates (Mode 3 — always available)
         return get_tobi_response(prompt)
+    # When AI_BACKEND is added, update this to:
+    #   if settings.ai_backend == "bedrock":
+    #       return await get_bedrock_response_with_context(prompt, ...)
+    #   elif settings.use_local_ai and settings.llama_server_url:
+    #       return await get_ai_response(prompt)
+    #   else:
+    #       return get_tobi_response(prompt)
