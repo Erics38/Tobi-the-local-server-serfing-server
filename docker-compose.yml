@@ -41,6 +41,7 @@ services:
       - ./logs:/app/logs
       - ./models:/app/models:ro
       - ./app:/app/app
+      - ./static:/app/static
     restart: unless-stopped
 
     healthcheck:
