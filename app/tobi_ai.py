@@ -58,31 +58,21 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # AWS Bedrock client — created lazily on first use, then cached.
-# Lazy init avoids a 60-90s IMDS credential fetch at module load time that
-# would delay the health endpoint and cause UserData health checks to time out.
-# boto3 clients are thread-safe once created.
+# boto3/botocore imports are also deferred to avoid any module-level network
+# activity (endpoint resolution, IMDS probing) that delays app startup.
 # ---------------------------------------------------------------------------
-try:
-    import boto3
-    import botocore.exceptions
-    from botocore.config import Config as BotocoreConfig
-    _boto3_available = True
-except ImportError:
-    _boto3_available = False
-    logger.warning("boto3 not installed — Bedrock backend unavailable")
-
 _bedrock_client = None
 _bedrock_available = False
 
 
 def _get_bedrock_client():
-    """Return the cached Bedrock client, creating it on first call."""
+    """Return the cached Bedrock client, importing boto3 and creating it on first call."""
     global _bedrock_client, _bedrock_available
     if _bedrock_client is not None:
         return _bedrock_client
-    if not _boto3_available:
-        return None
     try:
+        import boto3
+        from botocore.config import Config as BotocoreConfig
         _bedrock_client = boto3.client(
             "bedrock-runtime",
             region_name=settings.aws_region,
@@ -92,6 +82,8 @@ def _get_bedrock_client():
         )
         _bedrock_available = True
         logger.info(f"Bedrock client initialised (region={settings.aws_region})")
+    except ImportError:
+        logger.warning("boto3 not installed — Bedrock backend unavailable")
     except Exception as e:
         _bedrock_client = None
         _bedrock_available = False
@@ -566,17 +558,19 @@ async def get_bedrock_response_with_context(prompt: str, session_id: str, db) ->
         )
         return ai_text
 
-    except botocore.exceptions.ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        logger.error(f"Bedrock ClientError [{error_code}]: {e}", exc_info=True)
-        logger.info("Falling back to template responses")
-        return get_tobi_response(prompt)
-    except botocore.exceptions.BotoCoreError as e:
-        logger.error(f"Bedrock BotoCoreError: {type(e).__name__}: {e}", exc_info=True)
-        logger.info("Falling back to template responses")
-        return get_tobi_response(prompt)
     except Exception as e:
-        logger.error(f"Bedrock unexpected error: {type(e).__name__}: {e}", exc_info=True)
+        # Import botocore here to reference its exception types without a module-level import
+        try:
+            import botocore.exceptions
+            if isinstance(e, botocore.exceptions.ClientError):
+                error_code = e.response["Error"]["Code"]
+                logger.error(f"Bedrock ClientError [{error_code}]: {e}", exc_info=True)
+            elif isinstance(e, botocore.exceptions.BotoCoreError):
+                logger.error(f"Bedrock BotoCoreError: {type(e).__name__}: {e}", exc_info=True)
+            else:
+                logger.error(f"Bedrock unexpected error: {type(e).__name__}: {e}", exc_info=True)
+        except ImportError:
+            logger.error(f"Bedrock error: {type(e).__name__}: {e}", exc_info=True)
         logger.info("Falling back to template responses")
         return get_tobi_response(prompt)
 
