@@ -6,10 +6,8 @@ Run these tests to diagnose issues with Docker containers and networking.
 
 import pytest
 import httpx
-import asyncio
 import docker
 import time
-from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 
@@ -184,10 +182,11 @@ class TestDockerNetwork:
         app_container = docker_client.containers.get("restaurant-ai")
 
         # Test if we can establish a socket connection to llama-server:8080
-        exit_code, output = app_container.exec_run(
-            "python -c \"import socket; s=socket.socket(); s.settimeout(5); s.connect(('llama-server', 8080)); s.close(); print('Connected')\"",
-            demux=True
+        cmd = (
+            "python -c \"import socket; s=socket.socket(); s.settimeout(5); "
+            "s.connect(('llama-server', 8080)); s.close(); print('Connected')\""
         )
+        exit_code, output = app_container.exec_run(cmd, demux=True)
 
         stdout, stderr = output
 
@@ -226,7 +225,8 @@ class TestDockerResources:
         memory_reservation = llama_container.attrs["HostConfig"].get("MemoryReservation", 0)
 
         print(f"Memory limit: {memory_limit / (1024**3):.2f} GB" if memory_limit else "No memory limit")
-        print(f"Memory reservation: {memory_reservation / (1024**3):.2f} GB" if memory_reservation else "No memory reservation")
+        mem_res_str = f"Memory reservation: {memory_reservation / (1024**3):.2f} GB"
+        print(mem_res_str if memory_reservation else "No memory reservation")
 
     def test_cpu_limits(self, docker_client):
         """Check CPU limits."""
@@ -328,10 +328,11 @@ class TestLlamaServerConnectivity:
         app_container = docker_client.containers.get("restaurant-ai")
 
         # Execute Python command inside app container
-        exit_code, output = app_container.exec_run(
-            "python -c \"import urllib.request; print(urllib.request.urlopen('http://llama-server:8080/v1/models', timeout=5).read().decode())\"",
-            demux=True
+        cmd = (
+            "python -c \"import urllib.request; "
+            "print(urllib.request.urlopen('http://llama-server:8080/v1/models', timeout=5).read().decode())\""
         )
+        exit_code, output = app_container.exec_run(cmd, demux=True)
 
         stdout, stderr = output
 
@@ -380,7 +381,7 @@ class TestLlamaServerConnectivity:
             for i in range(3):
                 start = time.time()
                 try:
-                    response = await client.get("http://localhost:8080/v1/models")
+                    await client.get("http://localhost:8080/v1/models")
                     elapsed = time.time() - start
                     times.append(elapsed)
                     print(f"Request {i+1} took {elapsed:.3f}s")

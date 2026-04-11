@@ -9,8 +9,6 @@ Usage:
 
 import docker
 import sys
-from datetime import datetime
-from typing import Dict, Any
 
 
 def print_section(title: str):
@@ -83,7 +81,7 @@ def check_health_status(client: docker.DockerClient):
             app_logs = app_health.get("Log", [])
             if app_logs:
                 last_log = app_logs[-1]
-                print(f"\nApp last health check:")
+                print("\nApp last health check:")
                 print(f"  Exit code: {last_log.get('ExitCode')}")
                 print(f"  Output: {last_log.get('Output', 'N/A')[:200]}")
 
@@ -91,7 +89,7 @@ def check_health_status(client: docker.DockerClient):
             llama_logs = llama_health.get("Log", [])
             if llama_logs:
                 last_log = llama_logs[-1]
-                print(f"\nLlama last health check:")
+                print("\nLlama last health check:")
                 print(f"  Exit code: {last_log.get('ExitCode')}")
                 print(f"  Output: {last_log.get('Output', 'N/A')[:200]}")
 
@@ -313,10 +311,11 @@ def test_connectivity(client: docker.DockerClient):
 
         # Test HTTP connection
         print("\nTesting HTTP connection...")
-        exit_code, output = app_container.exec_run(
-            "python -c \"import urllib.request; print(urllib.request.urlopen('http://llama-server:8080/v1/models', timeout=5).read().decode())\"",
-            demux=True
+        cmd = (
+            "python -c \"import urllib.request; "
+            "print(urllib.request.urlopen('http://llama-server:8080/v1/models', timeout=5).read().decode())\""
         )
+        exit_code, output = app_container.exec_run(cmd, demux=True)
 
         stdout, stderr = output
 
@@ -331,7 +330,7 @@ def test_connectivity(client: docker.DockerClient):
                     models = data.get("data", [])
                     if models:
                         print(f"  Loaded model: {models[0].get('id', 'unknown')}")
-                except:
+                except Exception:
                     pass
             else:
                 print(f"⚠️  Unexpected response: {response[:100]}")

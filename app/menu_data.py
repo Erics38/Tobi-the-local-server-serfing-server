@@ -44,27 +44,28 @@ MENU_DATA: dict[str, Any] = {
     # Starters — $11–16
     # -----------------------------------------------------------------------
     "starters": [
-        {"name": "Truffle Fries",            "description": "Parmesan, rosemary, truffle oil",                    "price": 12.00},
-        {"name": "Spicy Tuna Tartare",        "description": "Ahi tuna, avocado, sesame-soy dressing",            "price": 16.00},
-        {"name": "Crispy Brussels",           "description": "Balsamic glaze, chili flakes, lemon zest",          "price": 11.00},
-        {"name": "Burrata & Tomato",          "description": "Heirloom tomato, basil oil, sea salt",              "price": 14.00},
-        {"name": "Smoked Chicken Flatbread",  "description": "Arugula, goat cheese, roasted red pepper",          "price": 13.00},
+        {"name": "Truffle Fries", "description": "Parmesan, rosemary, truffle oil", "price": 12.00},
+        {"name": "Spicy Tuna Tartare", "description": "Ahi tuna, avocado, sesame-soy dressing", "price": 16.00},
+        {"name": "Crispy Brussels", "description": "Balsamic glaze, chili flakes, lemon zest", "price": 11.00},
+        {"name": "Burrata & Tomato", "description": "Heirloom tomato, basil oil, sea salt", "price": 14.00},
+        {"name": "Smoked Chicken Flatbread", "description": "Arugula, goat cheese, roasted red pepper", "price": 13.00},
     ],
 
     # -----------------------------------------------------------------------
     # Mains — $16–32
     # -----------------------------------------------------------------------
     "mains": [
-        {"name": "Seared Salmon Bowl",                "description": "Brown rice, avocado, miso vinaigrette",          "price": 24.00},
-        {"name": "Short Rib Pappardelle",             "description": "Red wine braise, parmesan, gremolata",           "price": 26.00},
-        {"name": "Buttermilk Fried Chicken Sandwich", "description": "Pickles, garlic aioli, brioche bun",             "price": 18.00},
-        {"name": "Miso Glazed Cod",                   "description": "Snap peas, jasmine rice, sesame",                "price": 28.00},
-        {"name": "Steak Frites",                      "description": "8 oz sirloin, chimichurri, hand-cut fries",      "price": 32.00},
-        {"name": "House Smash Burger",                "description": "Double patty, cheddar, caramelized onion",       "price": 16.00},
-        {"name": "Roasted Mushroom Risotto",          "description": "Truffle oil, parmesan, thyme",                   "price": 22.00},
-        {"name": "Grilled Chicken Cobb",              "description": "Bacon, egg, blue cheese, avocado ranch",         "price": 19.00},
-        {"name": "Lobster Mac & Cheese",              "description": "Cavatappi, gruyère, breadcrumbs",                "price": 29.00},
-        {"name": "Spaghetti Pomodoro",                "description": "San Marzano tomato, basil, pecorino",            "price": 17.00},
+        {"name": "Seared Salmon Bowl", "description": "Brown rice, avocado, miso vinaigrette", "price": 24.00},
+        {"name": "Short Rib Pappardelle", "description": "Red wine braise, parmesan, gremolata", "price": 26.00},
+        {"name": "Buttermilk Fried Chicken Sandwich",
+         "description": "Pickles, garlic aioli, brioche bun", "price": 18.00},
+        {"name": "Miso Glazed Cod", "description": "Snap peas, jasmine rice, sesame", "price": 28.00},
+        {"name": "Steak Frites", "description": "8 oz sirloin, chimichurri, hand-cut fries", "price": 32.00},
+        {"name": "House Smash Burger", "description": "Double patty, cheddar, caramelized onion", "price": 16.00},
+        {"name": "Roasted Mushroom Risotto", "description": "Truffle oil, parmesan, thyme", "price": 22.00},
+        {"name": "Grilled Chicken Cobb", "description": "Bacon, egg, blue cheese, avocado ranch", "price": 19.00},
+        {"name": "Lobster Mac & Cheese", "description": "Cavatappi, gruyère, breadcrumbs", "price": 29.00},
+        {"name": "Spaghetti Pomodoro", "description": "San Marzano tomato, basil, pecorino", "price": 17.00},
     ],
 
     # -----------------------------------------------------------------------

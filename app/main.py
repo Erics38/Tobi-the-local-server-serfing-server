@@ -71,7 +71,7 @@ app = FastAPI(
     description="The Common House — AI-powered restaurant ordering system",
     version="1.0.0",
     # OpenAPI docs exposed only in development to keep production lean and secure
-    docs_url="/api/docs"  if settings.is_development else None,
+    docs_url="/api/docs" if settings.is_development else None,
     redoc_url="/api/redoc" if settings.is_development else None,
 )
 
