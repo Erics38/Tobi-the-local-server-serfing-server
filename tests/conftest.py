@@ -10,16 +10,20 @@ from pathlib import Path
 # Add parent directory to path so tests can import app modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Set env vars before any app module is imported so settings pick them up
+os.environ.setdefault("ENVIRONMENT", "testing")
+os.environ.setdefault("USE_LOCAL_AI", "false")
+os.environ.setdefault("LOG_LEVEL", "ERROR")
+
+# Ensure DB tables exist before any test runs
+from app.database import init_db  # noqa: E402
+init_db()
+
 
 @pytest.fixture(scope="session")
 def test_env():
     """Set up test environment variables."""
-    os.environ["ENVIRONMENT"] = "testing"
-    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-    os.environ["USE_LOCAL_AI"] = "false"  # Use template mode for tests
-    os.environ["LOG_LEVEL"] = "ERROR"  # Reduce log noise during tests
     yield
-    # Cleanup after all tests
 
 
 @pytest.fixture
